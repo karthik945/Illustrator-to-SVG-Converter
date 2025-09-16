@@ -10,7 +10,15 @@ const port = process.env.PORT || 3000;
 
 // === Middleware Setup ===
 // THE FINAL, MOST ROBUST FIX FOR CORS:
-app.use(cors({ origin: '*', methods: ['GET', 'POST'] }));
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false
+}));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
 
 // This middleware will serve your index.html from the root
 app.use(express.static(__dirname)); 
