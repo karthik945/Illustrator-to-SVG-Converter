@@ -8,8 +8,12 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// === Middleware Setup ===
+// THIS IS THE FIX: Apply CORS to all incoming requests
 app.use(cors());
-app.use(express.static(__dirname));
+// This middleware will serve your index.html from the root
+app.use(express.static(__dirname)); 
+
 
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
@@ -19,6 +23,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+
+// === Routes ===
 app.post('/convert', upload.single('aiFile'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'Error: No file uploaded.' });
@@ -34,17 +40,14 @@ app.post('/convert', upload.single('aiFile'), (req, res) => {
     if (fileExtension === '.eps') {
         const intermediatePdfFile = inputFile + '.pdf';
         const epsToPdfCommand = `gs -sDEVICE=pdfwrite -dEPSCrop -o "${intermediatePdfFile}" "${inputFile}"`;
-        
-        // --- OUR NEW DEBUGGING LOG ---
         console.log("Attempting to execute command:", epsToPdfCommand);
-
         exec(epsToPdfCommand, (err1) => {
             if (err1) {
-                console.error('Ghostscript (EPS to PDF) failed:', err1); // We want to see this error in the log
+                console.error('Ghostscript (EPS to PDF) failed:', err1);
                 return cleanupAndSendError(res, inputFile, { message: 'Ghostscript conversion failed.' });
             }
             const pdfToSvgCommand = `pdf2svg "${intermediatePdfFile}" "${finalOutputFile}"`;
-            console.log("Attempting to execute command:", pdfToSvgCommand); // And this one too
+            console.log("Attempting to execute command:", pdfToSvgCommand);
             exec(pdfToSvgCommand, (err2) => {
                 fs.unlink(intermediatePdfFile, () => {});
                 if (err2) {
@@ -56,10 +59,7 @@ app.post('/convert', upload.single('aiFile'), (req, res) => {
         });
     } else if (fileExtension === '.ai') {
         const command = `pdf2svg "${inputFile}" "${finalOutputFile}"`;
-        
-        // --- OUR NEW DEBUGGING LOG ---
         console.log("Attempting to execute command:", command);
-
         exec(command, (error) => {
             if (error) {
                 console.error('AI conversion failed:', error);
