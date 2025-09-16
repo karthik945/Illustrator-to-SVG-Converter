@@ -17,6 +17,20 @@ app.use(cors({
     credentials: false
 }));
 
+// Manual CORS headers as fallback
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+    
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
+
 // Handle preflight requests explicitly
 app.options('*', cors());
 
@@ -34,6 +48,11 @@ const upload = multer({ storage: storage });
 
 
 // === Routes ===
+// Test endpoint for CORS debugging
+app.get('/test-cors', (req, res) => {
+    res.json({ message: 'CORS is working!', timestamp: new Date().toISOString() });
+});
+
 app.post('/convert', upload.single('aiFile'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'Error: No file uploaded.' });
