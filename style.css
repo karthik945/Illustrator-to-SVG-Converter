@@ -1,0 +1,107 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.container {
+    background-color: #ffffff;
+    padding: 2rem 3rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+}
+
+header h1 {
+    font-size: 1.8rem;
+    color: #1a1a1a;
+    margin-bottom: 0.5rem;
+}
+
+header p {
+    font-size: 1rem;
+    color: #666;
+    margin-top: 0;
+    margin-bottom: 2rem;
+}
+
+.upload-area {
+    border: 2px dashed #ccc;
+    border-radius: 6px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+#fileName {
+    margin-top: 1rem;
+    font-style: italic;
+    color: #555;
+}
+
+button, .download-button {
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+#uploadButton {
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ccc;
+}
+
+#uploadButton:hover {
+    background-color: #e0e0e0;
+}
+
+#convertButton {
+    background-color: #007bff;
+    color: white;
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+#convertButton:hover {
+    background-color: #0056b3;
+}
+
+#convertButton:disabled {
+    background-color: #a0c7e4;
+    cursor: not-allowed;
+}
+
+.download-button {
+    background-color: #28a745;
+    color: white;
+}
+
+.download-button:hover {
+    background-color: #218838;
+}
+
+.status-box {
+    padding: 1rem;
+    border-radius: 5px;
+    margin-top: 1.5rem;
+    font-weight: 500;
+}
+
+.status-box.info { background-color: #e2f3ff; color: #004085; }
+.status-box.success { background-color: #d4edda; color: #155724; }
+.status-box.error { background-color: #f8d7da; color: #721c24; }

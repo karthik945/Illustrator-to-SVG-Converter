@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Converter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>AI & EPS to SVG Converter</h1>
+            <p>A simple, private, self-hosted converter.</p>
+        </header>
+        
+        <main>
+            <div class="upload-area">
+                <!-- 1. FIXED: Removed duplicate input and updated accepted types -->
+                <input type="file" id="fileInput" accept=".ai,.eps" style="display: none;">
+                <!-- 2. FIXED: Updated button text -->
+                <button id="uploadButton">Select .ai or .eps File</button>
+                <span id="fileName">No file chosen</span>
+            </div>
+            
+            <button id="convertButton" disabled>Convert to SVG</button>
+            
+            <div id="status" class="status-box">
+                <!-- Status messages will appear here -->
+            </div>
+            
+            <a id="downloadLink" class="download-button" style="display: none;">Download SVG</a>
+        </main>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput'); // Renamed for clarity
+        const uploadButton = document.getElementById('uploadButton');
+        const fileNameSpan = document.getElementById('fileName');
+        const convertButton = document.getElementById('convertButton');
+        const statusDiv = document.getElementById('status');
+        const downloadLink = document.getElementById('downloadLink');
+
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                fileNameSpan.textContent = file.name;
+                convertButton.disabled = false;
+            } else {
+                fileNameSpan.textContent = 'No file chosen';
+                convertButton.disabled = true;
+            }
+        });
+
+        convertButton.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                statusDiv.textContent = 'Please select a file first.';
+                statusDiv.className = 'status-box error';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('aiFile', file);
+
+            statusDiv.textContent = 'Uploading and converting... Please wait.';
+            statusDiv.className = 'status-box info';
+            downloadLink.style.display = 'none';
+            convertButton.disabled = true;
+            uploadButton.disabled = true;
+
+            try {
+                const response = await fetch('http://localhost:3000/convert', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Conversion failed on the server.');
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+
+                downloadLink.href = url;
+                // 3. FIXED: This now correctly replaces any extension with .svg
+                downloadLink.download = file.name.replace(/\.[^/.]+$/, ".svg");
+                downloadLink.style.display = 'block';
+                statusDiv.textContent = 'Conversion successful!';
+                statusDiv.className = 'status-box success';
+
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.className = 'status-box error';
+            } finally {
+                convertButton.disabled = false;
+                uploadButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
