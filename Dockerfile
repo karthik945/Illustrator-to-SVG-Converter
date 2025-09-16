@@ -1,10 +1,11 @@
 # Step 1: Start with a lightweight version of Linux that includes Node.js
 FROM node:18-slim
 
-# Step 2: Update the package manager and install our required system tools
+# Step 2: Update the package manager and install ALL required system tools
 RUN apt-get update && apt-get install -y \
     ghostscript \
     pdf2svg \
+    inkscape \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 

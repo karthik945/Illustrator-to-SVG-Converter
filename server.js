@@ -8,36 +8,11 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// === Middleware Setup ===
-// THE FINAL, MOST ROBUST FIX FOR CORS:
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: false
-}));
+// Use robust CORS settings and serve the static frontend files
+app.use(cors({ origin: '*', methods: ['GET', 'POST'] }));
+app.use(express.static(__dirname));
 
-// Manual CORS headers as fallback
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.header('Access-Control-Max-Age', '86400'); // 24 hours
-    
-    if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-    } else {
-        next();
-    }
-});
-
-// Handle preflight requests explicitly
-app.options('*', cors());
-
-// This middleware will serve your index.html from the root
-app.use(express.static(__dirname)); 
-
-
+// Configure file storage
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 const storage = multer.diskStorage({
@@ -46,18 +21,11 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-
-// === Routes ===
-// Test endpoint for CORS debugging
-app.get('/test-cors', (req, res) => {
-    res.json({ message: 'CORS is working!', timestamp: new Date().toISOString() });
-});
-
+// The main conversion route
 app.post('/convert', upload.single('aiFile'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'Error: No file uploaded.' });
     }
-
     const inputFile = req.file.path;
     const fileExtension = path.extname(req.file.originalname).toLowerCase();
     const outputDir = path.join(__dirname, 'converted');
@@ -65,54 +33,62 @@ app.post('/convert', upload.single('aiFile'), (req, res) => {
     const outputFileName = `${path.basename(req.file.filename, fileExtension)}.svg`;
     const finalOutputFile = path.join(outputDir, outputFileName);
 
-    if (fileExtension === '.eps') {
+    if (fileExtension === '.ai') {
+        // --- LOGIC FOR .AI FILES: Use Inkscape ---
+        console.log(`Using Inkscape for AI file: ${req.file.originalname}`);
+        const command = `inkscape --export-filename="${finalOutputFile}" "${inputFile}"`;
+        exec(command, (error) => {
+            if (error) {
+                console.error('Inkscape conversion failed:', error);
+                return cleanupAndSendError(res, inputFile, { message: 'Inkscape conversion failed.' });
+            }
+            downloadFinalFile(res, inputFile, finalOutputFile);
+        });
+
+    } else if (fileExtension === '.eps') {
+        // --- LOGIC FOR .EPS FILES: Use Ghostscript -> pdf2svg ---
+        console.log(`Using Ghostscript -> pdf2svg for EPS file: ${req.file.originalname}`);
         const intermediatePdfFile = inputFile + '.pdf';
         const epsToPdfCommand = `gs -sDEVICE=pdfwrite -dEPSCrop -o "${intermediatePdfFile}" "${inputFile}"`;
-        console.log("Attempting to execute command:", epsToPdfCommand);
         exec(epsToPdfCommand, (err1) => {
             if (err1) {
                 console.error('Ghostscript (EPS to PDF) failed:', err1);
-                return cleanupAndSendError(res, inputFile, { message: 'Ghostscript conversion failed.' });
+                return cleanupAndSendError(res, inputFile, { message: 'Ghostscript failed.' });
             }
             const pdfToSvgCommand = `pdf2svg "${intermediatePdfFile}" "${finalOutputFile}"`;
-            console.log("Attempting to execute command:", pdfToSvgCommand);
             exec(pdfToSvgCommand, (err2) => {
                 fs.unlink(intermediatePdfFile, () => {});
                 if (err2) {
                     console.error('pdf2svg failed:', err2);
-                    return cleanupAndSendError(res, inputFile, { message: 'pdf2svg conversion failed.' });
+                    return cleanupAndSendError(res, inputFile, { message: 'pdf2svg failed.' });
                 }
                 downloadFinalFile(res, inputFile, finalOutputFile);
             });
         });
-    } else if (fileExtension === '.ai') {
-        const command = `pdf2svg "${inputFile}" "${finalOutputFile}"`;
-        console.log("Attempting to execute command:", command);
-        exec(command, (error) => {
-            if (error) {
-                console.error('AI conversion failed:', error);
-                return cleanupAndSendError(res, inputFile, { message: 'AI conversion failed.' });
-            }
-            downloadFinalFile(res, inputFile, finalOutputFile);
-        });
+
     } else {
         cleanupAndSendError(res, inputFile, { message: `Unsupported file type: ${fileExtension}` });
     }
 });
 
+// Helper function to send the file to the user
 function downloadFinalFile(res, inputFile, finalOutputFile) {
     console.log("Conversion successful. Sending file for download.");
     res.download(finalOutputFile, (err) => {
         if (err) console.error('Download error:', err);
+        // Cleanup temporary files after download attempt
         fs.unlink(finalOutputFile, () => {});
         fs.unlink(inputFile, () => {});
     });
 }
+
+// Helper function to handle errors
 function cleanupAndSendError(res, inputFile, errorPayload) {
-    fs.unlink(inputFile, () => {});
+    fs.unlink(inputFile, () => {}); // Always clean up the uploaded file
     res.status(500).json(errorPayload);
 }
 
+// Start the server
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
