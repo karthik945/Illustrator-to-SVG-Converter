@@ -6,11 +6,9 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-// IMPORTANT CHANGE 1: Use the port Render provides, or 3000 for local testing
 const port = process.env.PORT || 3000;
 
 app.use(cors());
-// This line makes the server host your index.html file
 app.use(express.static(__dirname));
 
 const uploadDir = path.join(__dirname, 'uploads');
@@ -25,6 +23,7 @@ app.post('/convert', upload.single('aiFile'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'Error: No file uploaded.' });
     }
+
     const inputFile = req.file.path;
     const fileExtension = path.extname(req.file.originalname).toLowerCase();
     const outputDir = path.join(__dirname, 'converted');
@@ -34,16 +33,22 @@ app.post('/convert', upload.single('aiFile'), (req, res) => {
 
     if (fileExtension === '.eps') {
         const intermediatePdfFile = inputFile + '.pdf';
-        // IMPORTANT CHANGE 2: Use the simple command name, not the full path
         const epsToPdfCommand = `gs -sDEVICE=pdfwrite -dEPSCrop -o "${intermediatePdfFile}" "${inputFile}"`;
+        
+        // --- OUR NEW DEBUGGING LOG ---
+        console.log("Attempting to execute command:", epsToPdfCommand);
+
         exec(epsToPdfCommand, (err1) => {
             if (err1) {
+                console.error('Ghostscript (EPS to PDF) failed:', err1); // We want to see this error in the log
                 return cleanupAndSendError(res, inputFile, { message: 'Ghostscript conversion failed.' });
             }
             const pdfToSvgCommand = `pdf2svg "${intermediatePdfFile}" "${finalOutputFile}"`;
+            console.log("Attempting to execute command:", pdfToSvgCommand); // And this one too
             exec(pdfToSvgCommand, (err2) => {
                 fs.unlink(intermediatePdfFile, () => {});
                 if (err2) {
+                    console.error('pdf2svg failed:', err2);
                     return cleanupAndSendError(res, inputFile, { message: 'pdf2svg conversion failed.' });
                 }
                 downloadFinalFile(res, inputFile, finalOutputFile);
@@ -51,8 +56,13 @@ app.post('/convert', upload.single('aiFile'), (req, res) => {
         });
     } else if (fileExtension === '.ai') {
         const command = `pdf2svg "${inputFile}" "${finalOutputFile}"`;
+        
+        // --- OUR NEW DEBUGGING LOG ---
+        console.log("Attempting to execute command:", command);
+
         exec(command, (error) => {
             if (error) {
+                console.error('AI conversion failed:', error);
                 return cleanupAndSendError(res, inputFile, { message: 'AI conversion failed.' });
             }
             downloadFinalFile(res, inputFile, finalOutputFile);
@@ -63,6 +73,7 @@ app.post('/convert', upload.single('aiFile'), (req, res) => {
 });
 
 function downloadFinalFile(res, inputFile, finalOutputFile) {
+    console.log("Conversion successful. Sending file for download.");
     res.download(finalOutputFile, (err) => {
         if (err) console.error('Download error:', err);
         fs.unlink(finalOutputFile, () => {});
