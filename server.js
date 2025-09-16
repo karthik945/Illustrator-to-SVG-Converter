@@ -9,8 +9,9 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // === Middleware Setup ===
-// THIS IS THE FIX: Apply CORS to all incoming requests
-app.use(cors());
+// THE FINAL, MOST ROBUST FIX FOR CORS:
+app.use(cors({ origin: '*', methods: ['GET', 'POST'] }));
+
 // This middleware will serve your index.html from the root
 app.use(express.static(__dirname)); 
 
